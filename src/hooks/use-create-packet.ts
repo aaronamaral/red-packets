@@ -65,7 +65,10 @@ export function useCreatePacket() {
         });
 
         // Wait for approval to confirm
-        await publicClient.waitForTransactionReceipt({ hash: approveTxHash });
+        const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveTxHash });
+        if (approveReceipt.status === "reverted") {
+          throw new Error("USDC approval transaction reverted");
+        }
       }
 
       // Create packet
@@ -83,10 +86,14 @@ export function useCreatePacket() {
         ],
       });
 
-      // Wait for create tx and parse packet ID from event logs
+      // Wait for create tx and verify it succeeded
       const receipt = await publicClient.waitForTransactionReceipt({ hash: createTxHash });
 
-      let onchainPacketId = 0;
+      if (receipt.status === "reverted") {
+        throw new Error("Transaction reverted — you may not have enough USDC or ETH for gas");
+      }
+
+      let onchainPacketId = -1;
       for (const log of receipt.logs) {
         try {
           const event = decodeEventLog({
@@ -103,7 +110,11 @@ export function useCreatePacket() {
         }
       }
 
-      // Store metadata in DB
+      if (onchainPacketId < 0) {
+        throw new Error("Packet creation event not found in transaction");
+      }
+
+      // Store metadata in DB — only after confirmed onchain success
       setStep("storing");
       const res = await fetch("/api/packets", {
         method: "POST",

@@ -77,6 +77,10 @@ export function useClaimPacket(uuid: string, onchainPacketId: number) {
 
       const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
 
+      if (receipt.status === "reverted") {
+        throw new Error("Claim transaction reverted — the packet may be expired or fully claimed");
+      }
+
       let amount = "0.00";
       for (const log of receipt.logs) {
         try {
