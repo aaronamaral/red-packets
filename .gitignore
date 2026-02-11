@@ -27,6 +27,13 @@ yarn-error.log*
 
 # local env files
 .env*.local
+.env
+
+# foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+contracts/lib/
 
 # vercel
 .vercel

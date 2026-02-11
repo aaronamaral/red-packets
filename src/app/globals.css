@@ -3,25 +3,68 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #1a0808;
+  --foreground: #FFF8E7;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  min-height: 100vh;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+/* Gold shimmer text effect */
+.text-shimmer {
+  background: linear-gradient(
+    90deg,
+    #FBC293 0%,
+    #FFD700 25%,
+    #FDD5B1 50%,
+    #FFD700 75%,
+    #FBC293 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 2s linear infinite;
+}
+
+/* Red packet envelope */
+.bg-envelope {
+  background: #CF202F;
+}
+
+/* Subtle pattern overlay for envelope */
+.pattern-overlay {
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23FFD700' fill-opacity='0.08'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* Fire glow effect */
+.fire-glow {
+  filter: drop-shadow(0 0 8px rgba(207, 32, 47, 0.5)) drop-shadow(0 0 20px rgba(251, 194, 147, 0.3));
+}
+
+/* Lantern glow */
+.lantern-glow {
+  filter: drop-shadow(0 4px 12px rgba(251, 194, 147, 0.4));
+}
+
+/* Horse background glow pulse — exact #FBC293 gold via CSS mask */
+.horse-glow {
+  animation: horse-pulse 4s ease-in-out infinite;
+}
+
+@keyframes horse-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 20px rgba(251, 194, 147, 0.3))
+      drop-shadow(0 0 50px rgba(251, 194, 147, 0.1));
+    opacity: 0.18;
+  }
+  50% {
+    filter: drop-shadow(0 0 35px rgba(251, 194, 147, 0.5))
+      drop-shadow(0 0 70px rgba(251, 194, 147, 0.2));
+    opacity: 0.28;
   }
 }
