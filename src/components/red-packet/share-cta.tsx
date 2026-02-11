@@ -23,9 +23,14 @@ export function ShareCta({ packetId, handle, amount, showCreateLink = true }: Sh
   const intentUrl = generateTweetIntentUrl(tweetText);
 
   function handleCopy() {
-    navigator.clipboard.writeText(shareUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback for HTTP/unsupported contexts
+      window.prompt("Copy this link:", shareUrl);
+    }
   }
 
   async function handleSaveImage() {

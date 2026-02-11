@@ -138,10 +138,17 @@ export function useCreatePacket() {
     }
   }, [address, publicClient, walletChainId, switchChainAsync, writeContractAsync, allowance]);
 
+  function reset() {
+    setStep("idle");
+    setError(null);
+    setPacketUuid(null);
+  }
+
   return {
     step,
     packetUuid,
     error,
+    reset,
     allowance: allowance as bigint | undefined,
     balance: balance as bigint | undefined,
     submitPacket,

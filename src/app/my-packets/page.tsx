@@ -64,9 +64,13 @@ function PacketTile({ packet }: { packet: CreatedPacket }) {
   }
 
   function handleCopy() {
-    navigator.clipboard.writeText(shareUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      window.prompt("Copy this link:", shareUrl);
+    }
   }
 
   return (

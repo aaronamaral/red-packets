@@ -85,7 +85,7 @@ red-packets/
 
 ## Smart Contract
 
-`contracts/src/RedPacket.sol` — audited, includes:
+`contracts/src/RedPacket.sol` — reviewed and tested (56 Foundry tests), includes:
 
 **Core functions:**
 - `createPacket(amount, totalClaims, isRandom, expiry)` — deposit USDC, max $2000, max 200 claims, max 24h expiry
@@ -166,6 +166,18 @@ NEXT_PUBLIC_BASE_RPC_URL           # Base RPC endpoint
 - **Share URL param**: `?bless=handle` instead of `?ref=handle` for thematic consistency
 - **Wagmi v2**: Required for OnchainKit provider compatibility. Do not upgrade to wagmi v3.
 - **No OnchainKit CSS**: Removed due to PostCSS conflict with Tailwind.
+
+## IP Sanctions / Geo-blocking
+
+`src/middleware.ts` — Next.js edge middleware that blocks access from OFAC sanctioned countries using Vercel's `x-vercel-ip-country` header.
+
+**Blocked countries:** Cuba (CU), Iran (IR), North Korea (KP), Syria (SY), Russia (RU)
+
+- Runs at the edge before any page renders — zero latency cost
+- Returns a 403 HTML page for blocked regions
+- Skips check on localhost (no geo header in dev)
+- Excludes `api/auth` routes (needed for OAuth callbacks)
+- Country list is in the `BLOCKED_COUNTRIES` Set — easy to update
 
 ## Visual Theme
 

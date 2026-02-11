@@ -64,7 +64,7 @@ function StepIndicator({ step }: { step: string }) {
 export default function CreatePage() {
   const { data: session } = useSession();
   const { isConnected } = useAccount();
-  const { step, packetUuid, error, allowance, balance, submitPacket } = useCreatePacket();
+  const { step, packetUuid, error, allowance, balance, submitPacket, reset } = useCreatePacket();
 
   const [amount, setAmount] = useState("");
   const [recipients, setRecipients] = useState("10");
@@ -287,7 +287,12 @@ export default function CreatePage() {
               )}
 
               {error && (
-                <p className="text-red-light text-sm mb-4">{error}</p>
+                <div className="mb-4">
+                  <p className="text-red-light text-sm mb-2">{error}</p>
+                  <button onClick={reset} className="text-xs text-cream/50 hover:text-cream/80 underline">
+                    Try again
+                  </button>
+                </div>
               )}
 
               <Button

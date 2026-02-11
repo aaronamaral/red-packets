@@ -15,8 +15,9 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.AUTH_URL || "http://localhost:3000"),
   title: "Red Packets on Base | Coinbase",
-  description: "Send and receive USDC red packets on Base. Celebrate with crypto.",
+  description: "Celebrate Lunar New Year by sharing USDC red packet blessings on Base.",
   openGraph: {
     title: "Red Packets on Base | Coinbase",
     description: "Send and receive USDC red packets on Base. Celebrate with crypto.",
