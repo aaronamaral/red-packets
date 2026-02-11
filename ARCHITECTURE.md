@@ -27,6 +27,25 @@
      └───────────┘  └───────────┘  └───────────┘
 ```
 
+## UUID Routing
+
+All user-facing URLs use the database UUID, never the sequential onchain `packet_id`:
+
+```
+Onchain: packet_id = 0, 1, 2, 3, ...  (sequential, guessable)
+URL:     /claim/a3f2b1c4-8d7e-4f12-...  (UUID, unguessable)
+```
+
+Flow: URL UUID → DB lookup → resolve to onchain packet_id → contract interaction.
+
+This prevents enumeration attacks where someone could iterate `/claim/0`, `/claim/1` to find and claim all packets. The onchain packet_id is only used internally between the API and the smart contract.
+
+API routes that accept `[id]` in the path all resolve UUID → packet_id:
+- `GET /api/packets/[uuid]` → looks up `packet_id` from `packets` table
+- `POST /api/packets/[uuid]/claim` → resolves before signing
+- `POST /api/packets/[uuid]/confirm` → resolves before verifying
+- `GET /api/og/[uuid]` → resolves for creator info
+
 ## User Flows
 
 ### Creator Flow

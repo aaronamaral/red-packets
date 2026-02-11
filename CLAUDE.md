@@ -162,6 +162,7 @@ NEXT_PUBLIC_BASE_RPC_URL           # Base RPC endpoint
 - **Onchain Twitter dedup**: `twitterClaimed` mapping prevents same Twitter user from claiming with multiple wallets
 - **Creator withdrawal anytime**: No expiry wait for refunds — creator can pull remaining funds immediately
 - **OG image template**: Designer-created PNG template with dynamic pfp + handle overlay via next/og
+- **UUID claim URLs**: Claim URLs use the DB UUID (`/claim/[uuid]`), not the sequential onchain packet ID. Prevents enumeration attacks where someone could guess `/claim/0`, `/claim/1`, etc. All API routes resolve UUID → onchain `packet_id` via DB lookup.
 - **Share URL param**: `?bless=handle` instead of `?ref=handle` for thematic consistency
 - **Wagmi v2**: Required for OnchainKit provider compatibility. Do not upgrade to wagmi v3.
 - **No OnchainKit CSS**: Removed due to PostCSS conflict with Tailwind.
