@@ -24,7 +24,7 @@ npm run lint       # ESLint
 
 ## Current Deployment
 
-- **Contract:** `0x1329B01e6fa433dB925426521d473131179c5738` (Base Sepolia)
+- **Contract:** `0xb24454BD63f7E4841bba93e2a4E817e4d62257C9` (Base Sepolia)
 - **Signer:** `0xddc4b677c11300811bCF6e6dbb135360bb54e244`
 - **USDC:** `0x036CbD53842c5426634e7929541eC2318f3dCF7e` (Base Sepolia)
 - **Chain ID:** 84532 (Base Sepolia)
@@ -90,7 +90,7 @@ red-packets/
 **Core functions:**
 - `createPacket(amount, totalClaims, isRandom, expiry)` — deposit USDC, max $2000, max 200 claims, max 24h expiry
 - `claim(packetId, twitterUserId, nonce, signature)` — EIP-712 verified, onchain Twitter dedup via `twitterClaimed` mapping
-- `refund(packetId)` — creator can withdraw remaining at any time (no expiry wait)
+- `refund(packetId)` — creator can withdraw remaining after packet expiry
 
 **Security features:**
 - `nonReentrant` on all state-changing functions
@@ -99,10 +99,12 @@ red-packets/
 - Two-step ownership transfer (`transferOwnership` + `acceptOwnership`)
 - Zero-address checks on constructor, `setSigner`, `transferOwnership`
 - Onchain Twitter user dedup prevents same Twitter user claiming with different wallets
+- Per-packet nonce scoping prevents cross-packet replay and global DoS
 - Division-by-zero guards in random split calculation
-- Minimum claim amount enforced (never returns 0)
+- Minimum claim amount enforced (`MIN_PER_CLAIM` = $0.01, never returns 0)
+- Refunds gated by packet expiry (prevents creator rug-pull during claim window)
 
-**Random splits:** Deterministic pseudo-random bounded to 20-200% of average per claim. Falls back to equal split when average drops below 5 units.
+**Random splits:** Deterministic pseudo-random bounded to 20-200% of average per claim. Enforces MIN_PER_CLAIM ($0.01) floor per claim while reserving minimums for remaining claimers. Falls back to equal split when remaining amount can't satisfy minimums.
 
 ## Anti-Bot System
 
@@ -160,7 +162,7 @@ NEXT_PUBLIC_BASE_RPC_URL           # Base RPC endpoint
 - **Fail-closed anti-bot**: Missing Twitter profile data rejects claims rather than allowing them
 - **Atomic claim locking**: DB insert happens before signature generation to prevent race condition double-claims
 - **Onchain Twitter dedup**: `twitterClaimed` mapping prevents same Twitter user from claiming with multiple wallets
-- **Creator withdrawal anytime**: No expiry wait for refunds — creator can pull remaining funds immediately
+- **Refund after expiry**: Creator can only withdraw remaining funds after the packet has expired, preventing rug-pulls mid-claim window
 - **OG image template**: Designer-created PNG template with dynamic pfp + handle overlay via next/og
 - **UUID claim URLs**: Claim URLs use the DB UUID (`/claim/[uuid]`), not the sequential onchain packet ID. Prevents enumeration attacks where someone could guess `/claim/0`, `/claim/1`, etc. All API routes resolve UUID → onchain `packet_id` via DB lookup.
 - **Share URL param**: `?bless=handle` instead of `?ref=handle` for thematic consistency
@@ -241,6 +243,7 @@ Click shared link → /claim/[uuid]
 ### Refund Flow
 ```
 My Packets → See all created packets
+  → Packet must be expired before refund is allowed
   → Packet with remaining balance shows "Withdraw X USDC" button
   → Click → Submit refund tx (wallet)
   → Funds returned to creator
@@ -313,10 +316,12 @@ rate_limits
 | Double claim (same wallet) | `hasClaimed` onchain mapping |
 | Double claim (same Twitter, diff wallets) | `twitterClaimed` onchain + DB UNIQUE constraint |
 | Race condition double-claim | Atomic DB INSERT before signature generation |
-| Signature replay | Global `usedNonces` mapping + 256-bit random nonces |
+| Signature replay | Per-packet scoped `usedNonces` mapping + 256-bit random nonces |
 | Cross-chain replay | EIP-712 domain includes chainId + contract address |
 | Signer key compromise | `pause()` + `setSigner()` for key rotation |
+| Nonce DoS across packets | Nonces scoped per packet — using a nonce on packet A doesn't block it on packet B |
 | Division by zero (random split) | Guards: `range == 0`, `minAmount == 0`, `average < 5` fallbacks |
+| Creator rug-pull | Refund requires `block.timestamp >= packet.expiry` — can't withdraw while claims are active |
 | Zero-amount claims | `require(claimAmount > 0)` + minimum enforced |
 | Ownership loss | Two-step transfer with `acceptOwnership()` |
 | Reentrancy | `nonReentrant` on all fund-moving functions + CEI pattern |

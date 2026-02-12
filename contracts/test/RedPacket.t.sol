@@ -401,7 +401,7 @@ contract RedPacketTest is Test {
     function test_claim_rejectsRefundedPacket() public {
         uint256 packetId = _createPacket(TEN_USDC, 2, false);
 
-        // Creator refunds immediately (no expiry wait)
+        vm.warp(block.timestamp + 2 hours);
         vm.prank(creator);
         redPacket.refund(packetId);
 
@@ -431,6 +431,7 @@ contract RedPacketTest is Test {
         uint256 packetId = _createPacket(TEN_USDC, 5, false);
         uint256 balBefore = usdc.balanceOf(creator);
 
+        vm.warp(block.timestamp + 2 hours);
         vm.prank(creator);
         redPacket.refund(packetId);
 
@@ -446,6 +447,7 @@ contract RedPacketTest is Test {
         _claim(packetId, claimer1, "twitter1", 1);
 
         uint256 balBefore = usdc.balanceOf(creator);
+        vm.warp(block.timestamp + 2 hours);
         vm.prank(creator);
         redPacket.refund(packetId);
 
@@ -455,6 +457,7 @@ contract RedPacketTest is Test {
     function test_refund_emitsEvent() public {
         uint256 packetId = _createPacket(TEN_USDC, 1, false);
 
+        vm.warp(block.timestamp + 2 hours);
         vm.expectEmit(true, true, false, true);
         emit RedPacket.PacketRefunded(packetId, creator, TEN_USDC);
 
@@ -473,6 +476,7 @@ contract RedPacketTest is Test {
     function test_refund_rejectsDoubleRefund() public {
         uint256 packetId = _createPacket(TEN_USDC, 1, false);
 
+        vm.warp(block.timestamp + 2 hours);
         vm.prank(creator);
         redPacket.refund(packetId);
 
@@ -486,22 +490,25 @@ contract RedPacketTest is Test {
 
         _claim(packetId, claimer1, "twitter1", 1);
 
+        vm.warp(block.timestamp + 2 hours);
         vm.prank(creator);
         vm.expectRevert("Nothing to refund");
         redPacket.refund(packetId);
     }
 
     function test_refund_beforeExpiry() public {
-        // Creator can refund anytime — no expiry wait
+        // Creator cannot refund before expiry
         uint256 packetId = _createPacket(TEN_USDC, 5, false);
 
         vm.prank(creator);
-        redPacket.refund(packetId); // Should not revert
+        vm.expectRevert("Packet not expired");
+        redPacket.refund(packetId);
     }
 
     function test_refund_blocksFutureClaims() public {
         uint256 packetId = _createPacket(TEN_USDC, 2, false);
 
+        vm.warp(block.timestamp + 2 hours);
         vm.prank(creator);
         redPacket.refund(packetId);
 
@@ -547,7 +554,8 @@ contract RedPacketTest is Test {
         vm.expectRevert("Contract is paused");
         redPacket.claim(packetId, "twitter1", 1, sig);
 
-        // Refund still works (not paused)
+        // Refund still works (not paused), but only after expiry
+        vm.warp(block.timestamp + 2 hours);
         vm.prank(creator);
         redPacket.refund(packetId); // Should succeed
     }

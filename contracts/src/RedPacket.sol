@@ -31,7 +31,7 @@ contract RedPacket is EIP712, ReentrancyGuard {
     mapping(uint256 => Packet) public packets;
     mapping(uint256 => mapping(address => bool)) public hasClaimed;
     mapping(uint256 => mapping(uint256 => uint256)) public claimAmounts;
-    mapping(uint256 => bool) public usedNonces;
+    mapping(uint256 => mapping(uint256 => bool)) public usedNonces;
 
     // Onchain Twitter dedup: keccak256(packetId, twitterUserId) => claimed
     mapping(bytes32 => bool) public twitterClaimed;
@@ -128,7 +128,7 @@ contract RedPacket is EIP712, ReentrancyGuard {
         require(block.timestamp < packet.expiry, "Packet expired");
         require(packet.claimedCount < packet.totalClaims, "Fully claimed");
         require(!hasClaimed[packetId][msg.sender], "Already claimed");
-        require(!usedNonces[nonce], "Nonce already used");
+        require(!usedNonces[packetId][nonce], "Nonce already used");
 
         // Onchain Twitter user dedup — prevents same Twitter user claiming with different wallets
         bytes32 twitterKey = keccak256(abi.encodePacked(packetId, twitterUserId));
@@ -143,7 +143,7 @@ contract RedPacket is EIP712, ReentrancyGuard {
         require(recoveredSigner == signer, "Invalid signature");
 
         // Effects — all state changes before external call
-        usedNonces[nonce] = true;
+        usedNonces[packetId][nonce] = true;
         hasClaimed[packetId][msg.sender] = true;
         twitterClaimed[twitterKey] = true;
 
@@ -167,6 +167,7 @@ contract RedPacket is EIP712, ReentrancyGuard {
         Packet storage packet = packets[packetId];
         require(msg.sender == packet.creator, "Not creator");
         require(!packet.refunded, "Already refunded");
+        require(block.timestamp >= packet.expiry, "Packet not expired");
         require(packet.remainingAmount > 0, "Nothing to refund");
 
         packet.refunded = true;
@@ -199,8 +200,8 @@ contract RedPacket is EIP712, ReentrancyGuard {
 
         uint256 average = packet.remainingAmount / remainingClaims;
 
-        // Guard: if average is too small for meaningful random distribution, use equal split
-        if (average < 5) {
+        // Guard: if remaining amount cannot satisfy minimums, fallback to equal split
+        if (packet.remainingAmount < MIN_PER_CLAIM * remainingClaims) {
             return packet.remainingAmount / remainingClaims;
         }
 
@@ -210,7 +211,7 @@ contract RedPacket is EIP712, ReentrancyGuard {
         uint256 randomValue = uint256(seed);
 
         uint256 minAmount = average / 5;
-        if (minAmount == 0) minAmount = 1; // Guarantee non-zero minimum
+        if (minAmount < MIN_PER_CLAIM) minAmount = MIN_PER_CLAIM;
 
         uint256 maxAmount = average * 2;
 
@@ -219,11 +220,8 @@ contract RedPacket is EIP712, ReentrancyGuard {
 
         uint256 amount = minAmount + (randomValue % range);
 
-        // Ensure enough remains for other claimers (each gets at least 1 unit)
-        uint256 reserveForOthers = remainingClaims - 1; // 1 unit per remaining claimer minimum
-        if (minAmount > 1) {
-            reserveForOthers = minAmount * (remainingClaims - 1);
-        }
+        // Ensure enough remains for other claimers (each gets at least MIN_PER_CLAIM)
+        uint256 reserveForOthers = MIN_PER_CLAIM * (remainingClaims - 1);
 
         if (reserveForOthers >= packet.remainingAmount) {
             // Not enough to reserve, just give equal share
@@ -234,8 +232,8 @@ contract RedPacket is EIP712, ReentrancyGuard {
             amount = packet.remainingAmount - reserveForOthers;
         }
 
-        // Final safety: ensure non-zero
-        if (amount == 0) amount = 1;
+        // Final safety: ensure minimum payout
+        if (amount < MIN_PER_CLAIM) amount = MIN_PER_CLAIM;
 
         return amount;
     }
