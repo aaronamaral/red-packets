@@ -483,6 +483,15 @@ CREATE TABLE IF NOT EXISTS rate_limits (
 
 CREATE INDEX IF NOT EXISTS idx_rate_limits_lookup
 ON rate_limits (twitter_user_id, claimed_at);
+
+-- Follow cache table (per claimer + creator, short TTL)
+CREATE TABLE IF NOT EXISTS follow_cache (
+  user_id TEXT NOT NULL,
+  creator_id TEXT NOT NULL,
+  follows BOOLEAN NOT NULL,
+  checked_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (user_id, creator_id)
+);
 ```
 
 ---

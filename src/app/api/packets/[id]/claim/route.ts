@@ -3,11 +3,13 @@ import { auth } from "@/auth";
 import { runAntiBotChecks } from "@/lib/antibot";
 import { signClaim } from "@/lib/eip712";
 import { getDb } from "@/lib/db";
+import { checkUserFollowsCreator, resolveUserIdByUsername } from "@/lib/twitter";
 import { createPublicClient, http } from "viem";
 import { baseSepolia, base } from "viem/chains";
 import { RED_PACKET_CONTRACT, RED_PACKET_ABI, CHAIN_ID, BASE_CHAIN_ID } from "@/lib/constants";
 
 const chain = CHAIN_ID === BASE_CHAIN_ID ? base : baseSepolia;
+const COINBASE_AU_HANDLE = "coinbase_au";
 
 const publicClient = createPublicClient({
   chain,
@@ -28,12 +30,13 @@ export async function POST(
   // Resolve UUID to onchain packet_id
   const sql = getDb();
   const packetRows = await sql`
-    SELECT packet_id FROM packets WHERE id = ${id} LIMIT 1
+    SELECT packet_id, creator_twitter_id FROM packets WHERE id = ${id} LIMIT 1
   `;
   if (packetRows.length === 0) {
     return NextResponse.json({ error: "Packet not found" }, { status: 404 });
   }
   const packetId = packetRows[0].packet_id as number;
+  const creatorTwitterId = packetRows[0].creator_twitter_id as string;
 
   const body = await req.json();
   const { claimerAddress } = body;
@@ -98,6 +101,77 @@ export async function POST(
     );
   }
 
+  const accessToken = session.user.accessToken;
+  if (!accessToken || typeof accessToken !== "string") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!creatorTwitterId) {
+    return NextResponse.json(
+      { error: "Missing creator Twitter ID", reason: "follow_check_failed" },
+      { status: 403 }
+    );
+  }
+
+  try {
+    const coinbaseTwitterId =
+      process.env.COINBASE_AU_TWITTER_ID ||
+      (await resolveUserIdByUsername(accessToken, COINBASE_AU_HANDLE));
+
+    const [creatorFollow, coinbaseFollow] = await Promise.all([
+      checkUserFollowsCreator({
+        accessToken,
+        userId: session.user.twitterId,
+        creatorId: creatorTwitterId,
+      }),
+      checkUserFollowsCreator({
+        accessToken,
+        userId: session.user.twitterId,
+        creatorId: coinbaseTwitterId,
+      }),
+    ]);
+
+    const verifiedCreatorFollow =
+      !creatorFollow.follows && creatorFollow.source === "cache"
+        ? await checkUserFollowsCreator({
+            accessToken,
+            userId: session.user.twitterId,
+            creatorId: creatorTwitterId,
+            forceFresh: true,
+          })
+        : creatorFollow;
+
+    const verifiedCoinbaseFollow =
+      !coinbaseFollow.follows && coinbaseFollow.source === "cache"
+        ? await checkUserFollowsCreator({
+            accessToken,
+            userId: session.user.twitterId,
+            creatorId: coinbaseTwitterId,
+            forceFresh: true,
+          })
+        : coinbaseFollow;
+
+    if (!verifiedCreatorFollow.follows) {
+      return NextResponse.json(
+        { error: "Not following creator", reason: "not_following_creator" },
+        { status: 403 }
+      );
+    }
+
+    if (!verifiedCoinbaseFollow.follows) {
+      return NextResponse.json(
+        { error: "Not following Coinbase AU", reason: "not_following_coinbase" },
+        { status: 403 }
+      );
+    }
+  } catch (error) {
+    console.error("Error checking follow status:", error);
+    return NextResponse.json(
+      { error: "Unable to verify follow status", reason: "follow_check_failed" },
+      { status: 503 }
+    );
+  }
+
   // Generate nonce
   const nonce = BigInt(
     "0x" +
@@ -149,4 +223,3 @@ export async function POST(
     twitterUserId: session.user.twitterId,
   });
 }
-

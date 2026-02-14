@@ -63,6 +63,9 @@ export interface AntiBotError {
     | "insufficient_followers"
     | "already_claimed"
     | "rate_limited"
+    | "not_following_creator"
+    | "not_following_coinbase"
+    | "follow_check_failed"
     | "packet_expired"
     | "packet_full";
 }

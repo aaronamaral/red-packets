@@ -146,6 +146,7 @@ AUTH_TWITTER_ID                    # Twitter OAuth 2.0 Client ID
 AUTH_TWITTER_SECRET                # Twitter OAuth 2.0 Client Secret
 AUTH_URL=http://localhost:3002     # Must match running port
 TWITTER_BEARER_TOKEN               # Twitter API v2 bearer token
+COINBASE_AU_TWITTER_ID             # Optional: cache for @coinbase_au user ID
 NEXT_PUBLIC_ONCHAINKIT_API_KEY     # Coinbase Developer Platform (optional for testing)
 DATABASE_URL                       # Neon Postgres connection string
 SIGNER_PRIVATE_KEY                 # EIP-712 signer (hex, no 0x prefix)

@@ -11,6 +11,7 @@ declare module "next-auth" {
       twitterId: string;
       followersCount: number;
       createdAt: string;
+      accessToken: string;
     };
   }
 }
@@ -23,7 +24,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       authorization: {
         url: "https://twitter.com/i/oauth2/authorize",
         params: {
-          scope: "users.read tweet.read offline.access",
+          scope: "users.read tweet.read follows.read offline.access",
         },
       },
       userinfo: {
@@ -47,6 +48,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.followersCount =
           ((data.public_metrics as Record<string, number>)?.followers_count) || 0;
         token.createdAt = (data.created_at as string) || "";
+        token.accessToken = (account.access_token as string) || "";
       }
       return token;
     },
@@ -55,6 +57,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.twitterHandle = token.twitterHandle as string;
       session.user.followersCount = (token.followersCount as number) || 0;
       session.user.createdAt = token.createdAt as string;
+      session.user.accessToken = (token.accessToken as string) || "";
       return session;
     },
   },
